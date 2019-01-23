@@ -1,0 +1,209 @@
+"""
+Sudoku gui class
+"""
+import Tkinter as tk
+import sudoku_class as sc
+
+
+class sudoku_gui:
+    def __init__(self, board, master):
+        
+        # Add variables
+        self.board = board
+        self.BORDER = 50
+        self.BLOCK_SIZE = 300
+        self.BASE = self.board.get_base()
+        self.DIM = self.BORDER * 2 + self.BLOCK_SIZE * self.BASE
+        self.START = self.BORDER
+        self.END = self.DIM - self.BORDER
+        self.mode = board.get_mode()
+
+        # offsets for spacing(space between blocks, between cells,
+        # and between cell boundaries and numbers
+        self.offset_b = (self.DIM - self.BORDER * 2) / self.BASE
+        self.offset_c = self.offset_b / self.BASE
+        self.offset_n = self.offset_c / 2
+
+        # used to select cell
+        self.click_loc = (0,0)
+        self.selected_cell = None
+
+        #Tkinter widgets
+        self.frame = tk.Frame(master, padx = self.BORDER * 2,
+                              width = self.DIM + self.BORDER * 2,
+                              height = self.DIM + self.BORDER * 2)
+        self.frame.pack()
+        self.canvas = tk.Canvas(self.frame, width = self.DIM, height = self.DIM,
+                                background = "black")
+        self.canvas.pack(side = "right")
+        self.solve = tk.Button(self.frame, text="Solve", bg = "light blue",
+                               width = 25, height = 25,
+                               command = self.solve_button)
+        self.solve.pack(anchor = "sw")
+
+        # Tkinter bindings
+        self.canvas.bind("<Button-1>", self.click)
+        self.canvas.bind("<BackSpace>", self.remove_num)
+        self.canvas.bind("<Up>", self.move_up)
+        self.canvas.bind("<Down>", self.move_down)
+        self.canvas.bind("<Left>", self.move_left)
+        self.canvas.bind("<Right>", self.move_right)
+        self.canvas.bind("<Key>", self.key_press)
+
+    def click(self, event):
+        """
+        Returns the location of a click
+        """
+        # initialize variables
+        
+        self.click_loc = (event.x, event.y)
+        self.canvas.focus_set()
+        in_bounds_x = self.START < self.click_loc[0] < self.END
+        in_bounds_y = self.START < self.click_loc[1] < self.END
+
+        # test if click on  board
+        if in_bounds_x and in_bounds_y:
+            
+            # determine correct cell and set selected_cell
+            row = int((self.click_loc[1] - self.BORDER) // self.offset_c)
+            col = int((self.click_loc[0] - self.BORDER) // self.offset_c)
+            self.selected_cell = (row, col)
+            
+        # unset selected cell
+        else:
+            self.selected_cell = None
+        
+    def key_press(self, event):
+        """
+        Returns the key pressed
+        """
+        # initialize variables
+        nums = list(range(1, self.BASE ** 2 + 1))
+        key = event.char
+
+        # test if there is a selected_cell
+        if self.selected_cell != None:
+
+            # change cell
+            if int(key) in nums:
+                self.board.change_cell(self.selected_cell[0], self.selected_cell[1], int(key))
+            else:
+                print(repr(event.char))
+                print(event.char)
+                print(int(key))
+
+    def remove_num(self, event):
+        if self.mode == 1:
+            self.board.reset_cell(self.selected_cell[0],
+                                  self.selected_cell[1])
+
+    def move_up(self, event):
+        """
+        Move the selected cell one row up
+        """
+        row = (self.selected_cell[0] - 1) % self.BASE ** 2
+        col = (self.selected_cell[1]) % self.BASE ** 2
+        self.selected_cell = (row, col)
+
+    def move_down(self, event):
+        """
+        Move the selected cell one row down
+        """
+        row = (self.selected_cell[0] + 1) % self.BASE ** 2
+        col = self.selected_cell[1] % self.BASE ** 2
+        self.selected_cell = (row, col)
+        
+    def move_left(self, event):
+        """
+        Move the selected cell one column left
+        """
+        row = self.selected_cell[0] % self.BASE ** 2
+        col = (self.selected_cell[1] - 1) % self.BASE ** 2
+        self.selected_cell = (row, col)
+        
+    def move_right(self, event):
+        """
+        Move the selected cell one column right
+        """
+        row = self.selected_cell[0] % self.BASE ** 2
+        col = (self.selected_cell[1] + 1) % self.BASE ** 2
+        self.selected_cell = (row, col) 
+
+    def draw_data(self):
+        """
+        This draws variable data unto the board
+        """
+
+        # add cell contents to board
+        for row in range(self.BASE ** 2):
+            data = self.board.get_row(row)
+            vert = self.BORDER + (self.offset_c * row) + self.offset_n
+            for col in range(len(data)):
+                hort = self.BORDER + (self.offset_c * col) + self.offset_n
+                if data[col] != 0:            
+                    self.canvas.create_text(hort, vert, fill = "white", text= str(data[col]),
+                                            font = ("Helvetica", 30))
+
+        # add border to highlight selected cell
+        if self.selected_cell != None:
+            upper_left = (self.BORDER + (self.offset_c * self.selected_cell[1]),
+                          self.BORDER + (self.offset_c * self.selected_cell[0]))
+            lower_right = (self.BORDER + (self.offset_c * (self.selected_cell[1] + 1)),
+                           self.BORDER + (self.offset_c * (self.selected_cell[0] + 1)))
+            self.canvas.create_rectangle(upper_left[0], upper_left[1], lower_right[0],
+                                         lower_right[1], width = 5, outline = "gold")
+
+        # for testing
+        self.canvas.create_text(self.START, self.END + self.BORDER/2, fill="white",
+                                text= str(self.click_loc))
+        self.canvas.create_text(self.END - 50, self.END + self.BORDER/2, fill="white",
+                                text= str(self.selected_cell))
+
+    def draw_board(self):
+        """
+        Draws the nonvariable aspects of the board
+        """
+        
+        # box in board
+
+        self.canvas.create_rectangle(self.START, self.START, self.END,
+                                      self.END, outline = "white",
+                                      width = 10)
+
+        # space out and draw block lines
+        for i in range(self.BASE):
+            self.canvas.create_line(self.offset_b * i + self.BORDER,
+                                    self.START, self.offset_b * i + self.BORDER,
+                                    self.END, fill = "white", width = 5)
+            self.canvas.create_line(self.START, self.offset_b * i + self.BORDER,
+                                    self.END, self.offset_b * i + self.BORDER,
+                                    fill = "white", width = 5)
+             
+        # space out and draw cell lines and label
+            for j in range(self.BASE):
+                mult = (i * self.BASE) + j
+                line_loc = self.offset_c * (mult) + self.BORDER
+                self.canvas.create_line(line_loc, self.START, line_loc, self.END, fill = "white")
+                self.canvas.create_line(self.START, line_loc, self.END, line_loc, fill = "white") 
+                text_loc = line_loc + self.offset_n
+                self.canvas.create_text(text_loc, self.BORDER/2, fill = "white",
+                                        text = str(mult + 1), font=(15))
+                self.canvas.create_text(self.BORDER/2, text_loc, fill = "white",
+                                        text = str(mult + 1), font=(15))
+
+    def solve_button(self):
+        """
+        initiates board's solver
+        """
+        
+        self.board.solver()      
+
+    def draw(self):
+        """
+        Draw handler
+        """
+        
+        self.canvas.delete("all")
+        self.draw_board()
+        self.draw_data()
+        self.canvas.after(2, self.draw)
