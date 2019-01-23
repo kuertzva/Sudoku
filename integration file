@@ -1,0 +1,20 @@
+import sudoku_class as sc
+import sudoku_gui_class as gui
+import Tkinter as tk
+
+board = sc.sudoku_board(mode = 1)
+master = tk.Tk()
+GUI = gui.sudoku_gui(board, master)
+
+
+
+GUI.draw()
+
+
+gui.tk.mainloop()
+
+
+
+
+
+
