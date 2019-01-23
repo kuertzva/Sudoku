@@ -1,0 +1,401 @@
+import random
+
+class sudoku_board:
+    """
+    This class is to represent a sudoku board for the purposes of creating a
+    solver and generator
+
+    Terms used:
+        A cell is the space number occupies
+        Block is a 3 by 3 square of cells, of which there are 9( in 3x3 
+        formation)
+        A block row or column is a row or column of blocks.
+        A cell row or column is a row or column on the celluar level cutting 
+        accross the board
+        A block-cell row or column is a row or column on the cellular level 
+        with a block
+
+    Indexing for a cell
+    self.board[block_row][block_col][blockcell_row][blockcell_col]
+
+    Cell rows and columns are within the block (range(base))
+    """
+
+    def __init__(self, base = 3, layout = [], mode = 0):
+        """
+        Lay out is the board, base is the square root of
+        the length and width. State describes what kind of
+        board we are opening. State of 0 is play, state of
+        1 is solver mode.
+        """
+        
+        # create board of 0s. when player mode is implemented,
+        # this will only initiated when mode is zero
+        if len(layout) < 1:
+            self.board = [[[[0 for i in range(base)] for j in range(base)]
+                      for k in range(base)] for l in range(base)]
+        else:
+            self.board = layout
+
+        # variables for use throughout
+        self.base = base
+        self.dimension = base ** 2
+        self.mode = mode
+       
+
+    def __str__(self):
+    
+        bar = "-" * ((4 * self.base ** 2) + self.base - 1)
+        return_str = ""
+        for k in range(self.base):
+            for i in range(self.base):
+                cell_row = [self.board[k][j][i] for j in range(self.base)]
+                cell_row_formatted = ""
+                for x in range(len(cell_row)):
+                    for y in range(len(cell_row[x])):
+                        row_string = str(cell_row[x][y])
+                        if len(row_string) < 2:
+                            cell_row_formatted +=  "  " + str(row_string) + " "
+                        else:
+                            cell_row_formatted +=  " " + str(row_string) + " "
+                        if y == len(cell_row[x]) - 1:
+                            if x != len(cell_row) - 1:
+                                cell_row_formatted += "|"
+           
+                return_str += cell_row_formatted + "\n"
+            if k != self.base - 1:
+                return_str += bar + "\n"
+
+        return return_str
+
+    def get_base(self):
+        """
+        Returns base
+        """
+        return self.base
+
+    def get_dimension(self):
+        """
+        Returns dimension
+        """
+        
+        return self.dimension
+
+    def get_cell(self, row, col):
+        """
+        Returns contents of cell specified
+        """
+        
+        block_row = row // self.base
+        block_col = col // self.base
+        b_cell_row = row % self.base
+        b_cell_col = col % self.base
+        
+        return self.board[block_row][block_col][b_cell_row][b_cell_col]
+
+    def get_mode(self):
+        """
+        Return game mode
+        """
+        return self.mode
+
+    def get_row(self, row):
+
+        """
+        Returns contents of all cells in row specified. Row is given in
+        range of 0 - base ** 2 - 1
+        """
+    
+        # block row
+        block_row = row // self.base
+    
+        # cell row
+        b_cell_row = row % self.base
+    
+        # calculation
+        row_values = [self.board[block_row][block_col][b_cell_row][b_cell_col]
+                      for block_col in range (self.base) for b_cell_col
+                      in range(self.base)]    
+    
+        return row_values
+
+    def get_column(self, col):
+        """
+        Returns contents of all cells in column specified. Column is
+        given in range of 0 - base ** 2 - 1
+        """
+
+        # block column
+        block_col = col // self.base
+        
+    
+        # cell column
+        b_cell_col = col % self.base
+    
+        # calculation
+        column_values = [self.board[row // self.base][block_col][row % self.base]
+                         [b_cell_col] for row in range(self.dimension)]
+    
+        return column_values
+
+
+    def change_cell(self, row, col, val):
+        """
+        Changes the value of a cell. Row and column values are relative to the
+        whole board as opposed to the block (range 0 through base ** 2 - 1)
+        """
+        block_row = row // self.base
+        block_col = col // self.base
+        b_cell_row = row % self.base
+        b_cell_col = col % self.base
+
+        check = self.contradiction_check(row, col, val)
+
+        if check == True:
+            self.board[block_row][block_col][b_cell_row][b_cell_col] = val
+            return "good"
+        else:
+            print("cannot proceed: " + str(check))
+            return check
+
+    def reset_cell(self, row, col):
+        """
+        Resets a cell
+        """
+
+        block_row = row // self.base
+        cell_row = row % self.base
+        block_col = col // self.base
+        cell_col = col % self.base
+
+        self.board[block_row][block_col][cell_row][cell_col] = 0
+
+    def contradiction_check(self, row, col, val):
+        """
+        check whether a particular cell can have a value added to it and return true or false
+        """
+
+        # determine if occupied
+        if self.get_cell(row, col) != 0:
+            return False
+
+        # determine if value already in block
+        block_row = row // self.base
+        block_col = col // self.base
+        block = []
+        for cell_row in self.board[block_row][block_col]:
+            block += cell_row
+
+        if val in block:
+            block_loc = block.index(val)
+            cell_row = block_loc // self.base
+            cell_col = block_loc % self.base
+            row_return = block_row * self.base + cell_row
+            col_return = block_col * self.base + cell_col
+            print(row_return, col_return)
+            return False
+
+        # determine if value already in row
+        row_list = self.get_row(row)
+        if val in row_list:
+            print(row, row_list.index(val))
+            return False
+
+        # determine if value already in column
+        col_list = self.get_column(col)
+        if val in col_list:
+            print(col_list.index(val), col)
+            return False
+
+        return True
+
+    def valid_numbers(self, row, col):
+        """
+        Returns numbers that can be added to a specifc cell.
+        """
+
+        # UNTESTED
+        
+        nums = list(range(1, self.dimension + 1))
+
+        for num in nums:
+            if not board.contradiction_check(row, col, num):
+                nums.remove(num)
+
+        return nums
+                  
+
+    def cell_by_num(self, num, cell = False):
+        """
+        Take a cell number and converts it to a proper index
+        """
+        if num >= self.dimension ** 2:
+            print("out of range")
+            return None
+        
+        row = num // self.dimension
+        col = num % self.dimension
+        block_row = row // self.base
+        block_col = col // self.base
+        cell_row =  row % self.base
+        cell_col = col % self.base
+    
+        if cell:
+            return (block_row, block_col, cell_row, cell_col)
+        else:
+            return (row, col)
+
+    def get_cell_num(self, row, col):
+        """
+        Returns cell number corresponding to row and column
+        """
+        if row >= self.dimension or col >= self.dimension:
+            return "out of range"
+    
+        return (row * self.dimension + col)
+
+    def clone(self):
+        """
+        Return a clone of the board
+        """
+        
+        return sudoku_board(base = self.base, layout = self.board)
+
+    def solver(self, move_hist_loc = [], move_hist_val = [], last_turn = 0):
+        """
+        Solves the board.
+
+        Uses backtracking algorithm.
+        """
+
+        dup_board = self
+        start = last_turn
+        if mode == 0:
+            return "Wrong mode"
+
+        # iterate through cells
+        for cell in range(start, self.dimension ** 2):
+            print(cell)
+            # get coordinates
+            loc = self.cell_by_num(cell)
+            if self.get_cell(loc[0], loc[1]) != 0:
+                print("already filled")
+                continue
+            
+            # find valid value
+            for x in range(1, self.dimension + 1):
+                # success
+                if self.contradiction_check(loc[0],loc[1], x):
+                    self.change_cell(loc[0],loc[1], x)
+                    move_hist_loc.append(loc)
+                    move_hist_val.append(x)
+                    break
+            # failure
+            else:
+                print("backtrack")
+                backtrack = True
+                count = 1
+                # backtrack through prior cells
+                while backtrack:
+                    back_cell = cell - count
+                    print(back_cell)
+                    back_cell_loc = self.cell_by_num(back_cell)
+                    print(back_cell_loc)
+                    back_cell_val = self.get_cell(back_cell_loc[0], back_cell_loc[1])
+                    
+                    # make sure that this is not one of the provided cells
+                    if back_cell_loc not in move_hist_loc:
+                        count += 1
+                        print("not in history")
+                        continue
+
+                    else:
+                        self.reset_cell(back_cell_loc[0],back_cell_loc[1])
+        
+                    # determine if there are other working values
+                    for x in range(back_cell_val + 1, self.dimension + 1):
+                        print(x)
+                        # if so, rerun solver from that point
+                        if self.contradiction_check(back_cell_loc[0],
+                                                         back_cell_loc[1],
+                                                         x):
+                            print('found')
+                            self.change_cell(back_cell_loc[0],
+                                             back_cell_loc[1],
+                                             x)
+                            move_hist_loc.append(back_cell_loc)
+                            move_hist_val.append(x)
+                            return self.solver(move_hist_loc = move_hist_loc,
+                                               move_hist_val = move_hist_loc,
+                                               last_turn = back_cell + 1)
+                        else:
+                            print("No")
+                    # otherwise, remove it from the history and go another cell back
+                    else:
+                        if count > cell:
+                            break
+                        move_hist_loc.pop()
+                        move_hist_val.pop()
+                        self.reset_cell(back_cell_loc[0],back_cell_loc[1])
+                        count += 1
+                        print(self)
+
+
+        # return
+        return (move_hist_loc, move_hist_val)
+
+    def batch_implement(self, locations, values):
+        """
+        Fills a board in for a list of locations and values
+
+        BROKEN, OUT OF USE
+        """
+    
+        for idx in range(len(locations)):
+            loc = locations[idx]
+            val = values[idx]
+            self.change_cell(loc[0], loc[1], val)
+        
+    def score_cell(self, row, col):
+        """
+        This function was written to score cells for the process of generating
+        a solved board. It was not successful in that goal, but I am keeping it
+        here in case it is useful down the line
+
+        Returns the number of zeros in cells in same row and column, but not
+        block.
+
+        OUT OF USE
+        """
+        
+        # initialize variables
+        block_col = col // self.base
+        block_row = row // self.base
+    
+        # create a row list and remove all cells in the same block
+        row_list = get_row(row)
+        first_cut = block_col * self.base
+        second_cut = (block_col + 1) * self.base
+        row_list_trimmed = row_list[:first_cut] + row_list[second_cut:]
+    
+        # create a row list and remove all cells in the same block
+        col_list = get_col(col)
+        first_cut = block_row * self.base
+        second_cut = (block_row + 1) * self.base
+        col_list_trimmed = col_list[:first_cut] + col_list[second_cut:]
+    
+        #add lists together and count the zeros
+        master_list = row_list_trimmed + col_list_trimmed
+        score = master_list.count(0)
+    
+        # return 
+        return score            
+                        
+                  
+
+        
+
+        
+            
+
+    
